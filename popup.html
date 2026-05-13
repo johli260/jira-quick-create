@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JIRA Create Ticket</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <!-- ── MAIN VIEW ── -->
+  <div id="view-main" class="view active">
+    <header class="header">
+      <div class="header-left">
+        <span class="header-title">Create Ticket</span>
+      </div>
+      <button id="btn-settings" class="icon-btn" title="Settings">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+      </button>
+    </header>
+
+    <div id="main-scroll">
+
+    <div class="main-config">
+      <div class="field">
+        <label for="m-project">Project</label>
+        <div class="search-field">
+          <input id="m-project" type="text" placeholder="Search projects…" autocomplete="off" />
+          <input id="m-project-key" type="hidden" />
+          <button id="btn-clear-project" class="input-clear hidden" tabindex="-1" title="Clear">✕</button>
+          <ul id="project-suggestions" class="suggestions hidden"></ul>
+        </div>
+      </div>
+      <div class="field" style="margin-top:8px">
+        <label for="m-issuetype">Issue Type</label>
+        <select id="m-issuetype" disabled>
+          <option value="">— Select a project first —</option>
+        </select>
+      </div>
+      <div id="required-fields"></div>
+    </div>
+
+    <div class="parent-toggle-area">
+      <div id="global-parent-field" class="global-parent hidden">
+        <div class="global-parent-header">
+          <label for="global-parent-input">Parent Issue</label>
+          <button id="btn-remove-parent" class="icon-btn danger" title="Remove link">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+        <input id="global-parent-input" type="text" placeholder="e.g. PROJ-123" />
+        <span class="hint">New tickets will be linked as "is required by" this issue</span>
+      </div>
+
+      <div class="toggle-row">
+        <label id="parent-checkbox-row" class="link-parent-label">
+          <input type="checkbox" id="toggle-parent" />
+          Link to parent ticket
+        </label>
+        <label id="team-checkbox-row" class="link-parent-label">
+          <input type="checkbox" id="toggle-team" />
+          Add Label
+        </label>
+      </div>
+
+      <div id="global-team-field" class="global-parent hidden">
+        <div class="global-parent-header">
+          <label for="global-team-input">Label</label>
+          <button id="btn-remove-team" class="icon-btn danger" title="Remove label">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+        <input id="global-team-input" type="text" placeholder="e.g. frontend, backend" />
+        <span class="hint">Separate multiple labels with a comma</span>
+      </div>
+
+    </div>
+
+    <div id="tickets-container"></div>
+
+    </div><!-- /main-scroll -->
+
+    <div class="toolbar">
+      <button id="btn-add-ticket" class="btn btn-secondary">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+        Add Ticket
+      </button>
+      <button id="btn-submit-all" class="btn btn-primary" disabled>
+        Submit All
+      </button>
+    </div>
+
+    <div id="status-bar" class="status-bar hidden"></div>
+  </div>
+
+  <!-- ── SETTINGS VIEW ── -->
+  <div id="view-settings" class="view">
+    <header class="header">
+      <button id="btn-back" class="icon-btn" title="Back">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+      </button>
+      <span class="header-title">Settings</span>
+      <div style="width:32px"></div>
+    </header>
+
+    <div class="settings-body">
+      <div class="settings-section">
+        <h3 class="settings-section-title">JIRA Connection</h3>
+
+        <div class="field">
+          <label for="s-url">JIRA Base URL</label>
+          <input id="s-url" type="url" placeholder="https://yourcompany.atlassian.net" />
+          <span class="hint">No trailing slash</span>
+        </div>
+
+        <div class="field">
+          <label for="s-email">Account Email</label>
+          <input id="s-email" type="email" placeholder="you@company.com" />
+        </div>
+
+        <div class="field">
+          <label for="s-token">API Token</label>
+          <input id="s-token" type="password" placeholder="Atlassian API token" />
+          <span class="hint">
+            <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">Generate a token ↗</a>
+          </span>
+        </div>
+
+
+      </div>
+
+      <div class="settings-actions">
+        <button id="btn-test" class="btn btn-secondary">Test Connection</button>
+        <button id="btn-save" class="btn btn-primary">Save Settings</button>
+      </div>
+
+      <div id="settings-status" class="settings-status hidden"></div>
+    </div>
+  </div>
+
+  <!-- ── TICKET CARD TEMPLATE ── -->
+  <template id="ticket-template">
+    <div class="ticket-card" data-id="">
+      <div class="ticket-header">
+        <span class="ticket-number"></span>
+        <button class="ticket-collapse icon-btn" title="Collapse">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+        </button>
+        <button class="ticket-remove icon-btn danger" title="Remove ticket">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        </button>
+      </div>
+
+      <div class="ticket-body">
+        <div class="field">
+          <label>Title <span class="required">*</span></label>
+          <input class="ticket-title" type="text" placeholder="Short summary of the issue" maxlength="255" />
+        </div>
+
+        <div class="field">
+          <label>Description</label>
+          <textarea class="ticket-description" rows="3" placeholder="Detailed description…"></textarea>
+        </div>
+
+
+        <div class="field">
+          <label>Image Attachment</label>
+          <div class="drop-zone" tabindex="0" role="button" aria-label="Upload image">
+            <div class="drop-zone-prompt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+              <span>Click or drag & drop an image or video</span>
+              <span class="hint">PNG, JPG, GIF, WebP, MP4, MOV, WebM</span>
+            </div>
+            <div class="drop-zone-preview hidden">
+              <img class="preview-img" src="" alt="Preview" />
+              <video class="preview-video hidden" controls muted playsinline></video>
+              <div class="preview-info">
+                <span class="preview-name"></span>
+                <button class="preview-remove" title="Remove image">✕</button>
+              </div>
+            </div>
+          </div>
+          <input class="file-input" type="file" accept="image/*,video/*" hidden />
+        </div>
+
+        <div class="ticket-status hidden"></div>
+      </div>
+    </div>
+  </template>
+
+  <script src="popup.js"></script>
+</body>
+</html>
