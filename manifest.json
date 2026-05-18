@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "JIRA Bulk Ticket Creator",
+  "name": "JIRA Quick Create",
   "version": "1.0.0",
   "description": "Create and upload multiple JIRA tickets at once — each with a title, description, and image.",
   "action": {

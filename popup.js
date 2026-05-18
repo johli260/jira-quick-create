@@ -719,10 +719,11 @@ async function loadRequiredFields(projectKey, issueTypeId, issueTypeName = '') {
     }
 
     const isEpic = /epic/i.test(issueTypeName);
+    const EPIC_CATEGORY_EXCLUDE = new Set(['UXDD']);
     const fields = Object.entries(fieldsMap)
       .filter(([key, meta]) => {
         const mappedKey    = fieldNameToKey[meta.name] || key;
-        const isEpicExtra  = isEpic && (EPIC_REQUIRED_FIELDS.has(key) || EPIC_REQUIRED_FIELDS.has(mappedKey));
+        const isEpicExtra  = isEpic && !EPIC_CATEGORY_EXCLUDE.has(projectKey) && (EPIC_REQUIRED_FIELDS.has(key) || EPIC_REQUIRED_FIELDS.has(mappedKey));
         const isAlwaysShow = ALWAYS_SHOW_FIELDS.has(key) || ALWAYS_SHOW_FIELDS.has(mappedKey);
         return (meta.required || isEpicExtra || isAlwaysShow)
           && !SKIP_FIELDS.has(key)
@@ -730,8 +731,8 @@ async function loadRequiredFields(projectKey, issueTypeId, issueTypeName = '') {
           && !SKIP_NAMES.has(meta.name);
       });
 
-    // For Epics, ensure Epic Category always appears
-    if (isEpic) {
+    // For Epics, ensure Epic Category always appears (except projects where it's not applicable)
+    if (isEpic && !EPIC_CATEGORY_EXCLUDE.has(projectKey)) {
       const alreadyPresent = fields.some(([k, m]) =>
         k === 'customfield_11850' || fieldNameToKey[m.name] === 'customfield_11850' || m.name === 'Epic Category'
       );
