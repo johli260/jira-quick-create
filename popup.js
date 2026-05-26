@@ -66,15 +66,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
   // settings view bindings
-  document.getElementById('btn-back').addEventListener('click', () => showView('main'));
+  document.getElementById('btn-back').addEventListener('click', () => {
+    showView('main');
+    if (!allProjects.length && settings.url && settings.email && settings.token) {
+      loadAllProjects();
+      loadFieldDefinitions();
+      if (!tickets.length) addTicket();
+    }
+  });
   document.getElementById('btn-save').addEventListener('click', saveSettings);
   document.getElementById('btn-test').addEventListener('click', testConnection);
 
   populateSettingsForm();
-  loadAllProjects();
-  loadFieldDefinitions();
-  // start with one blank ticket
-  addTicket();
+
+  const hasAccount = settings.url && settings.email && settings.token;
+  if (hasAccount) {
+    showView('main');
+    loadAllProjects();
+    loadFieldDefinitions();
+    addTicket();
+  } else {
+    showView('settings');
+  }
 });
 
 // ── Views ──────────────────────────────────────────────────────────────────
@@ -106,8 +119,7 @@ function populateSettingsForm() {
 
 
 async function persistMainConfig() {
-  settings.project   = document.getElementById('m-project-key').value;
-  settings.issueType = document.getElementById('m-issuetype').value;
+  settings.project = document.getElementById('m-project-key').value;
   await persistSettings(settings);
 }
 
@@ -367,7 +379,7 @@ function validateSettings() {
   if (!settings.token) missing.push('API token');
   if (!project)        missing.push('project key');
   if (missing.length) {
-    showStatusBar(`Missing: ${missing.join(', ')}.`, 'error');
+    showStatusBar('JIRA account not connected.', 'error', 'Set it up here.');
     return false;
   }
   return true;
@@ -390,10 +402,15 @@ function setTicketStatus(card, type, msg) {
   }
 }
 
-function showStatusBar(msg, type) {
+function showStatusBar(msg, type, linkText = null) {
   const el = document.getElementById('status-bar');
-  el.textContent = msg;
   el.className = `status-bar ${type}`;
+  if (linkText) {
+    el.innerHTML = `${msg} <a href="#" style="color:inherit;font-weight:600;">${linkText}</a>`;
+    el.querySelector('a').addEventListener('click', e => { e.preventDefault(); showView('settings'); });
+  } else {
+    el.textContent = msg;
+  }
 }
 
 
@@ -554,16 +571,10 @@ async function loadIssueTypes(projectKey, preselectType = null) {
       opt.textContent = t.name;
       sel.appendChild(opt);
     });
-    if (preselectType) sel.value = preselectType;
     sel.disabled = false;
 
     // Prime fieldOptionsCache from Story createmeta; store promise so loadRequiredFields can await it
     prefetchPromises[projectKey] = prefetchAlwaysShowOptions(projectKey, types);
-
-    const selectedOpt = sel.options[sel.selectedIndex];
-    if (selectedOpt && selectedOpt.dataset.id) {
-      loadRequiredFields(projectKey, selectedOpt.dataset.id, selectedOpt.textContent.trim());
-    }
   } catch (e) {
     sel.innerHTML = `<option value="">Could not load: ${e.message}</option>`;
     sel.disabled = false;
@@ -676,7 +687,7 @@ async function fetchCustomFieldOptions(fieldId, projectKey = null) {
 const SKIP_FIELDS = new Set(['summary', 'description', 'project', 'issuetype', 'labels', 'attachment', 'reporter']);
 const SKIP_NAMES  = new Set(['Summary', 'Description', 'Project', 'Issue Type', 'Labels', 'Attachment', 'Reporter']);
 const FIELD_DEFAULTS       = { 'Does this Epic require Tagging/Digital Tracking?': 'No tracking required' };
-const EPIC_REQUIRED_FIELDS = new Set(['customfield_11850']);
+const EPIC_REQUIRED_FIELDS = new Set();
 const ALWAYS_SHOW_FIELDS   = new Set(['customfield_10225']);
 
 function clearRequiredFields() {
@@ -718,40 +729,15 @@ async function loadRequiredFields(projectKey, issueTypeId, issueTypeName = '') {
       fieldsMap = data2.projects?.[0]?.issuetypes?.[0]?.fields || {};
     }
 
-    const isEpic = /epic/i.test(issueTypeName);
-    const EPIC_CATEGORY_EXCLUDE = new Set(['UXDD']);
     const fields = Object.entries(fieldsMap)
       .filter(([key, meta]) => {
         const mappedKey    = fieldNameToKey[meta.name] || key;
-        const isEpicExtra  = isEpic && !EPIC_CATEGORY_EXCLUDE.has(projectKey) && (EPIC_REQUIRED_FIELDS.has(key) || EPIC_REQUIRED_FIELDS.has(mappedKey));
         const isAlwaysShow = ALWAYS_SHOW_FIELDS.has(key) || ALWAYS_SHOW_FIELDS.has(mappedKey);
-        return (meta.required || isEpicExtra || isAlwaysShow)
+        return (meta.required || isAlwaysShow)
           && !SKIP_FIELDS.has(key)
           && !SKIP_FIELDS.has(meta.key)
           && !SKIP_NAMES.has(meta.name);
       });
-
-    // For Epics, ensure Epic Category always appears (except projects where it's not applicable)
-    if (isEpic && !EPIC_CATEGORY_EXCLUDE.has(projectKey)) {
-      const alreadyPresent = fields.some(([k, m]) =>
-        k === 'customfield_11850' || fieldNameToKey[m.name] === 'customfield_11850' || m.name === 'Epic Category'
-      );
-      if (!alreadyPresent) {
-        const epicCatEntry = Object.entries(fieldsMap).find(([k, m]) =>
-          k === 'customfield_11850' || fieldNameToKey[m.name] === 'customfield_11850' || m.name === 'Epic Category'
-        );
-        if (epicCatEntry) {
-          fields.push(epicCatEntry);
-        } else {
-          const options = await fetchCustomFieldOptions('customfield_11850');
-          fields.push(['customfield_11850', {
-            name: 'Epic Category', required: true,
-            schema: { type: 'option' },
-            allowedValues: options,
-          }]);
-        }
-      }
-    }
 
     // Wait for Story prefetch to finish so cache is populated before we use it
     if (prefetchPromises[projectKey]) await prefetchPromises[projectKey];
